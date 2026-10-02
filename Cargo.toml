@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/dominio",
+    "crates/aplicacion",
+    "crates/fuentes",
+    "crates/persistencia",
+    "crates/lector",
+    "crates/ui",
+    "app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+
+[workspace.dependencies]
+thiserror = "1.0"

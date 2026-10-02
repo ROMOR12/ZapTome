@@ -1,0 +1,17 @@
+[package]
+name = "zaptome"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "zaptome"
+path = "src/main.rs"
+
+[dependencies]
+zaptome-dominio = { path = "../crates/dominio" }
+zaptome-aplicacion = { path = "../crates/aplicacion" }
+zaptome-fuentes = { path = "../crates/fuentes" }
+zaptome-persistencia = { path = "../crates/persistencia" }
+zaptome-lector = { path = "../crates/lector" }
+zaptome-ui = { path = "../crates/ui" }

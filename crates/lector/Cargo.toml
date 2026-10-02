@@ -1,0 +1,8 @@
+[package]
+name = "zaptome-lector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+zaptome-dominio = { path = "../dominio" }
