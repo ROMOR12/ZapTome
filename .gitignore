@@ -38,3 +38,6 @@ desktop.ini
 
 # Instrucciones locales del agente (no versionar)
 AGENTS.md
+
+# Configuración local de Cargo (rutas de la máquina, no versionar)
+.cargo/config.toml
