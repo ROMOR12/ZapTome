@@ -485,7 +485,6 @@ impl AppZapTome {
                 .width(170.0)
                 .selected_text(nombre_estado(self.filtros.estado))
                 .show_ui(ui, |ui| {
-                    estilo_desplegable(ui);
                     ui.selectable_value(&mut self.filtros.estado, None, "Cualquier estado");
                     ui.selectable_value(
                         &mut self.filtros.estado,
@@ -513,7 +512,6 @@ impl AppZapTome {
                 .width(170.0)
                 .selected_text(nombre_idioma(&self.filtros.idioma_original))
                 .show_ui(ui, |ui| {
-                    estilo_desplegable(ui);
                     ui.selectable_value(&mut self.filtros.idioma_original, None, "Cualquier idioma");
                     ui.selectable_value(
                         &mut self.filtros.idioma_original,
@@ -536,7 +534,6 @@ impl AppZapTome {
                 .width(190.0)
                 .selected_text(nombre_demografia(&self.filtros.demografia))
                 .show_ui(ui, |ui| {
-                    estilo_desplegable(ui);
                     ui.selectable_value(
                         &mut self.filtros.demografia,
                         None,
@@ -568,7 +565,6 @@ impl AppZapTome {
                 .width(170.0)
                 .selected_text(nombre_orden(self.filtros.orden))
                 .show_ui(ui, |ui| {
-                    estilo_desplegable(ui);
                     ui.selectable_value(&mut self.filtros.orden, Orden::Relevancia, "Relevancia");
                     ui.selectable_value(&mut self.filtros.orden, Orden::Popularidad, "Popularidad");
                     ui.selectable_value(&mut self.filtros.orden, Orden::Recientes, "Recientes");
@@ -806,11 +802,6 @@ impl eframe::App for AppZapTome {
                 Pantalla::Lector => self.ui_lector(ui, ctx, &p),
             });
     }
-}
-
-/// Hace más alta la ventana desplegable para que se vean todas las opciones.
-fn estilo_desplegable(ui: &mut egui::Ui) {
-    ui.set_min_height(320.0);
 }
 
 fn nombre_estado(estado: Option<EstadoObra>) -> &'static str {
