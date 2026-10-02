@@ -1949,6 +1949,9 @@ dependencies = [
 name = "zaptome-aplicacion"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "thiserror 1.0.69",
+ "tokio",
  "zaptome-dominio",
 ]
 

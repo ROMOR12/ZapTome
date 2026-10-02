@@ -5,4 +5,9 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+async-trait.workspace = true
+thiserror.workspace = true
 zaptome-dominio = { path = "../dominio" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
