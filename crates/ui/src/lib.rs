@@ -454,7 +454,10 @@ impl AppZapTome {
 
             let campo = ui.add_sized(
                 Vec2::new(340.0, ALTO_CONTROL),
-                egui::TextEdit::singleline(&mut self.consulta).hint_text("Buscar manga o manhwa…"),
+                egui::TextEdit::singleline(&mut self.consulta)
+                    .hint_text("Buscar manga o manhwa…")
+                    .font(FontId::proportional(17.0))
+                    .vertical_align(Align::Center),
             );
             let enter = campo.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
 
