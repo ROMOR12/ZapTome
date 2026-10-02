@@ -136,6 +136,7 @@ impl Servicio {
             obra: obra.id.clone(),
             fuente: obra.fuente.clone(),
             titulo: obra.titulo.clone(),
+            sinopsis: obra.sinopsis.clone(),
             portada: obra.portada.clone(),
             categorias: Vec::new(),
             favorito: false,

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS biblioteca (
     obra       TEXT    NOT NULL,
     fuente     TEXT    NOT NULL,
     titulo     TEXT    NOT NULL,
+    sinopsis   TEXT,
     portada    TEXT,
     categorias TEXT    NOT NULL DEFAULT '[]',
     favorito   INTEGER NOT NULL DEFAULT 0,
@@ -61,6 +62,9 @@ impl BaseDeDatos {
 
     fn desde_conexion(conexion: Connection) -> Result<Self, ErrorPersistencia> {
         conexion.execute_batch(ESQUEMA).map_err(map_err)?;
+        // Migración: añade la columna a bases creadas antes de que existiera. Si ya está,
+        // el error se ignora.
+        let _ = conexion.execute("ALTER TABLE biblioteca ADD COLUMN sinopsis TEXT", []);
         Ok(Self {
             conexion: Arc::new(Mutex::new(conexion)),
         })
@@ -81,6 +85,20 @@ fn decodificar_categorias(json: &str) -> Vec<String> {
     serde_json::from_str(json).unwrap_or_default()
 }
 
+/// Lee una fila de la biblioteca.
+fn leer_entrada(fila: &rusqlite::Row<'_>) -> rusqlite::Result<EntradaBiblioteca> {
+    let categorias: String = fila.get(5)?;
+    Ok(EntradaBiblioteca {
+        obra: IdObra(fila.get(0)?),
+        fuente: IdFuente(fila.get(1)?),
+        titulo: fila.get(2)?,
+        sinopsis: fila.get(3)?,
+        portada: fila.get(4)?,
+        categorias: decodificar_categorias(&categorias),
+        favorito: fila.get::<_, i64>(6)? != 0,
+    })
+}
+
 #[async_trait]
 impl RepositorioBiblioteca for BaseDeDatos {
     async fn guardar(&self, entrada: &EntradaBiblioteca) -> Result<(), ErrorPersistencia> {
@@ -89,10 +107,11 @@ impl RepositorioBiblioteca for BaseDeDatos {
         let conexion = self.bloqueo()?;
         conexion
             .execute(
-                "INSERT INTO biblioteca (obra, fuente, titulo, portada, categorias, favorito)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                "INSERT INTO biblioteca (obra, fuente, titulo, sinopsis, portada, categorias, favorito)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
                  ON CONFLICT(obra, fuente) DO UPDATE SET
                      titulo     = excluded.titulo,
+                     sinopsis   = excluded.sinopsis,
                      portada    = excluded.portada,
                      categorias = excluded.categorias,
                      favorito   = excluded.favorito",
@@ -100,6 +119,7 @@ impl RepositorioBiblioteca for BaseDeDatos {
                     entrada.obra.0,
                     entrada.fuente.0,
                     entrada.titulo,
+                    entrada.sinopsis,
                     entrada.portada,
                     categorias,
                     entrada.favorito as i64,
@@ -124,23 +144,11 @@ impl RepositorioBiblioteca for BaseDeDatos {
         let conexion = self.bloqueo()?;
         let mut sentencia = conexion
             .prepare(
-                "SELECT obra, fuente, titulo, portada, categorias, favorito
+                "SELECT obra, fuente, titulo, sinopsis, portada, categorias, favorito
                  FROM biblioteca ORDER BY titulo COLLATE NOCASE",
             )
             .map_err(map_err)?;
-        let filas = sentencia
-            .query_map([], |fila| {
-                let categorias: String = fila.get(4)?;
-                Ok(EntradaBiblioteca {
-                    obra: IdObra(fila.get(0)?),
-                    fuente: IdFuente(fila.get(1)?),
-                    titulo: fila.get(2)?,
-                    portada: fila.get(3)?,
-                    categorias: decodificar_categorias(&categorias),
-                    favorito: fila.get::<_, i64>(5)? != 0,
-                })
-            })
-            .map_err(map_err)?;
+        let filas = sentencia.query_map([], leer_entrada).map_err(map_err)?;
 
         let mut resultado = Vec::new();
         for fila in filas {
@@ -157,20 +165,10 @@ impl RepositorioBiblioteca for BaseDeDatos {
         let conexion = self.bloqueo()?;
         conexion
             .query_row(
-                "SELECT obra, fuente, titulo, portada, categorias, favorito
+                "SELECT obra, fuente, titulo, sinopsis, portada, categorias, favorito
                  FROM biblioteca WHERE obra = ?1 AND fuente = ?2",
                 params![obra.0, fuente.0],
-                |fila| {
-                    let categorias: String = fila.get(4)?;
-                    Ok(EntradaBiblioteca {
-                        obra: IdObra(fila.get(0)?),
-                        fuente: IdFuente(fila.get(1)?),
-                        titulo: fila.get(2)?,
-                        portada: fila.get(3)?,
-                        categorias: decodificar_categorias(&categorias),
-                        favorito: fila.get::<_, i64>(5)? != 0,
-                    })
-                },
+                leer_entrada,
             )
             .optional()
             .map_err(map_err)
@@ -294,6 +292,7 @@ mod tests {
             obra: IdObra("obra-1".into()),
             fuente: IdFuente("mangadex".into()),
             titulo: "Ejemplo".into(),
+            sinopsis: Some("Una sinopsis".into()),
             portada: Some("https://example.test/portada.jpg".into()),
             categorias: vec!["favoritos".into()],
             favorito: true,
@@ -314,6 +313,7 @@ mod tests {
         .unwrap()
         .expect("debe existir");
         assert_eq!(recuperada.titulo, "Ejemplo");
+        assert_eq!(recuperada.sinopsis.as_deref(), Some("Una sinopsis"));
         assert!(recuperada.favorito);
         assert_eq!(recuperada.categorias, vec!["favoritos".to_string()]);
         assert_eq!(RepositorioBiblioteca::listar(&bd).await.unwrap().len(), 1);

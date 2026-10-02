@@ -376,27 +376,43 @@ impl AppZapTome {
         egui::ScrollArea::vertical().show(ui, |ui| {
             for entrada in &self.biblioteca {
                 tema::tarjeta(ui, p, |ui| {
-                    ui.horizontal(|ui| {
+                    ui.horizontal_top(|ui| {
                         if let Some(url) = &entrada.portada {
                             portada_widget(ui, p, self.textura_portada(url));
                             if !self.portadas.contains_key(url) {
                                 pedir_portadas.push(url.clone());
                             }
                         }
-                        ui.add_space(6.0);
+                        ui.add_space(8.0);
                         ui.vertical(|ui| {
-                            ui.label(tema::titulo(&entrada.titulo, 17.0));
-                            ui.add_space(6.0);
                             ui.horizontal(|ui| {
-                                if tema::boton_relleno(ui, "Capítulos", p).clicked() {
-                                    abrir = Some(obra_desde_entrada(entrada));
-                                }
-                                if tema::boton_icono(ui, iconos::PAPELERA, 20.0, p.on_surface_variant)
+                                ui.label(tema::titulo(&entrada.titulo, 17.0));
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    if tema::boton_icono(
+                                        ui,
+                                        iconos::PAPELERA,
+                                        20.0,
+                                        p.on_surface_variant,
+                                    )
                                     .clicked()
-                                {
-                                    borrar = Some((entrada.obra.clone(), entrada.fuente.clone()));
-                                }
+                                    {
+                                        borrar =
+                                            Some((entrada.obra.clone(), entrada.fuente.clone()));
+                                    }
+                                });
                             });
+                            if let Some(sinopsis) = &entrada.sinopsis {
+                                let recorte: String = sinopsis.chars().take(140).collect();
+                                ui.label(
+                                    RichText::new(format!("{recorte}…"))
+                                        .size(13.0)
+                                        .color(p.on_surface_variant),
+                                );
+                            }
+                            ui.add_space(8.0);
+                            if tema::boton_relleno(ui, "Capítulos", p).clicked() {
+                                abrir = Some(obra_desde_entrada(entrada));
+                            }
                         });
                     });
                 });
@@ -416,37 +432,10 @@ impl AppZapTome {
     }
 
     fn ui_buscar(&mut self, ui: &mut egui::Ui, ctx: &Context, p: &Paleta) {
-        ui.label(tema::titulo("Buscar", 22.0));
-        ui.add_space(6.0);
-
-        Frame::none()
-            .fill(p.surface_container_high)
-            .rounding(Rounding::same(28.0))
-            .inner_margin(Margin::symmetric(18.0, 6.0))
-            .show(ui, |ui| {
-                ui.horizontal_centered(|ui| {
-                    ui.label(
-                        RichText::new(iconos::BUSCAR)
-                            .size(20.0)
-                            .color(p.on_surface_variant),
-                    );
-                    let ancho_campo = (ui.available_width() - 120.0).max(140.0);
-                    let campo = ui.add(
-                        egui::TextEdit::singleline(&mut self.consulta)
-                            .frame(false)
-                            .hint_text("Buscar manga o manhwa…")
-                            .desired_width(ancho_campo),
-                    );
-                    let enter = campo.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-                    if tema::boton_relleno(ui, "Buscar", p).clicked() || enter {
-                        self.iniciar_busqueda(ctx);
-                    }
-                });
-            });
-
-        ui.add_space(8.0);
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Fuente").color(p.on_surface_variant));
+            ui.label(tema::titulo("Buscar", 22.0));
+            ui.add_space(10.0);
+
             egui::ComboBox::from_id_salt("fuente")
                 .selected_text(
                     self.fuentes
@@ -459,9 +448,21 @@ impl AppZapTome {
                         ui.selectable_value(&mut self.fuente_sel, i, &fuente.nombre);
                     }
                 });
+
+            let campo = ui.add(
+                egui::TextEdit::singleline(&mut self.consulta)
+                    .hint_text("Buscar manga o manhwa…")
+                    .desired_width(340.0),
+            );
+            let enter = campo.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+            if tema::boton_relleno(ui, "Buscar", p).clicked() || enter {
+                self.iniciar_busqueda(ctx);
+            }
         });
 
-        ui.add_space(12.0);
+        ui.add_space(10.0);
+        ui.separator();
+        ui.add_space(6.0);
 
         let mut abrir: Option<Obra> = None;
         let mut pedir_portadas: Vec<String> = Vec::new();
@@ -469,27 +470,30 @@ impl AppZapTome {
         egui::ScrollArea::vertical().show(ui, |ui| {
             for obra in &self.resultados {
                 tema::tarjeta(ui, p, |ui| {
-                    ui.horizontal(|ui| {
+                    ui.horizontal_top(|ui| {
                         if let Some(url) = &obra.portada {
                             portada_widget(ui, p, self.textura_portada(url));
                             if !self.portadas.contains_key(url) {
                                 pedir_portadas.push(url.clone());
                             }
                         }
-                        ui.add_space(6.0);
+                        ui.add_space(8.0);
                         ui.vertical(|ui| {
-                            ui.label(tema::titulo(&obra.titulo, 17.0));
+                            ui.horizontal(|ui| {
+                                ui.label(tema::titulo(&obra.titulo, 17.0));
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    if tema::boton_relleno(ui, "Abrir", p).clicked() {
+                                        abrir = Some(obra.clone());
+                                    }
+                                });
+                            });
                             if let Some(sinopsis) = &obra.sinopsis {
-                                let recorte: String = sinopsis.chars().take(120).collect();
+                                let recorte: String = sinopsis.chars().take(140).collect();
                                 ui.label(
                                     RichText::new(format!("{recorte}…"))
                                         .size(13.0)
                                         .color(p.on_surface_variant),
                                 );
-                            }
-                            ui.add_space(6.0);
-                            if tema::boton_relleno(ui, "Abrir", p).clicked() {
-                                abrir = Some(obra.clone());
                             }
                         });
                     });

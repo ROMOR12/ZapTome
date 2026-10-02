@@ -88,6 +88,7 @@ pub struct EntradaBiblioteca {
     pub obra: IdObra,
     pub fuente: IdFuente,
     pub titulo: String,
+    pub sinopsis: Option<String>,
     pub portada: Option<String>,
     pub categorias: Vec<String>,
     pub favorito: bool,
