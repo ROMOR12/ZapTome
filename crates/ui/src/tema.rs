@@ -159,6 +159,8 @@ pub fn aplicar(ctx: &Context, oscuro: bool) {
     estilo.spacing.item_spacing = Vec2::new(10.0, 10.0);
     estilo.spacing.button_padding = Vec2::new(16.0, 9.0);
     estilo.spacing.interact_size.y = 40.0;
+    // Permite ventanas desplegables altas.
+    estilo.spacing.combo_height = 600.0;
     // Transiciones suaves al pasar el ratón y al pulsar.
     estilo.animation_time = 0.22;
     ctx.set_style(estilo);

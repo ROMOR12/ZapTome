@@ -813,15 +813,9 @@ impl eframe::App for AppZapTome {
     }
 }
 
-/// Da más altura y tamaño a las opciones de un desplegable.
+/// Hace más alta la ventana desplegable para que se vean todas las opciones.
 fn estilo_desplegable(ui: &mut egui::Ui) {
-    ui.spacing_mut().item_spacing.y = 10.0;
-    ui.style_mut()
-        .text_styles
-        .insert(egui::TextStyle::Body, FontId::proportional(18.0));
-    ui.style_mut()
-        .text_styles
-        .insert(egui::TextStyle::Button, FontId::proportional(18.0));
+    ui.set_min_height(380.0);
 }
 
 fn nombre_estado(estado: Option<EstadoObra>) -> &'static str {
