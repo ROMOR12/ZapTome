@@ -5,4 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+image = { version = "0.25.6", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
+reqwest = "0.13.3"
+thiserror.workspace = true
 zaptome-dominio = { path = "../dominio" }
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
