@@ -90,11 +90,13 @@ pub enum Orden {
 }
 
 /// Filtros opcionales de una búsqueda.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Filtros {
     /// Estado de publicación.
     pub estado: Option<EstadoObra>,
-    /// Idioma original, como `ja`, `ko` o `zh`.
+    /// Idioma en el que se quiere leer, según las traducciones disponibles.
+    pub idioma_lectura: Option<String>,
+    /// Idioma original de la obra, como `ja`, `ko` o `zh`.
     pub idioma_original: Option<String>,
     /// Demografía de publicación, como `shounen` o `seinen`.
     pub demografia: Option<String>,

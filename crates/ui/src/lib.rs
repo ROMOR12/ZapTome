@@ -480,6 +480,7 @@ impl AppZapTome {
         });
 
         ui.add_space(8.0);
+        let filtros_antes = self.filtros.clone();
         ui.horizontal_wrapped(|ui| {
             egui::ComboBox::from_id_salt("filtro_estado")
                 .width(170.0)
@@ -508,9 +509,29 @@ impl AppZapTome {
                     );
                 });
 
-            egui::ComboBox::from_id_salt("filtro_idioma")
-                .width(170.0)
-                .selected_text(nombre_idioma(&self.filtros.idioma_original))
+            egui::ComboBox::from_id_salt("filtro_idioma_lectura")
+                .width(200.0)
+                .selected_text(format!(
+                    "Lectura: {}",
+                    nombre_idioma(&self.filtros.idioma_lectura)
+                ))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.filtros.idioma_lectura, None, "Cualquier idioma");
+                    for (codigo, nombre) in IDIOMAS {
+                        ui.selectable_value(
+                            &mut self.filtros.idioma_lectura,
+                            Some((*codigo).to_string()),
+                            *nombre,
+                        );
+                    }
+                });
+
+            egui::ComboBox::from_id_salt("filtro_idioma_original")
+                .width(200.0)
+                .selected_text(format!(
+                    "Original: {}",
+                    nombre_idioma(&self.filtros.idioma_original)
+                ))
                 .show_ui(ui, |ui| {
                     ui.selectable_value(&mut self.filtros.idioma_original, None, "Cualquier idioma");
                     for (codigo, nombre) in IDIOMAS {
@@ -569,6 +590,11 @@ impl AppZapTome {
                 self.filtros = Filtros::default();
             }
         });
+
+        // Al cambiar cualquier filtro, se relanza la búsqueda.
+        if self.filtros != filtros_antes {
+            self.iniciar_busqueda(ctx);
+        }
 
         ui.add_space(10.0);
         ui.separator();
@@ -823,12 +849,12 @@ const IDIOMAS: &[(&str, &str)] = &[
 
 fn nombre_idioma(idioma: &Option<String>) -> &'static str {
     match idioma.as_deref() {
-        None => "Idioma: cualquiera",
+        None => "cualquiera",
         Some(codigo) => IDIOMAS
             .iter()
             .find(|(c, _)| *c == codigo)
             .map(|(_, nombre)| *nombre)
-            .unwrap_or("Idioma"),
+            .unwrap_or("—"),
     }
 }
 

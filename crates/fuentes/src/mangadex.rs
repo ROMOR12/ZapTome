@@ -101,6 +101,9 @@ impl FuenteManga for MangaDex {
         if let Some(estado) = estado_a_mangadex(filtros.estado) {
             parametros.push(("status[]".into(), estado.into()));
         }
+        if let Some(idioma) = &filtros.idioma_lectura {
+            parametros.push(("availableTranslatedLanguage[]".into(), idioma.clone()));
+        }
         if let Some(idioma) = &filtros.idioma_original {
             parametros.push(("originalLanguage[]".into(), idioma.clone()));
         }
