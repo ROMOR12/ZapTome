@@ -7,6 +7,8 @@ use eframe::egui;
 use zaptome_dominio::{Capitulo, IdFuente, Obra, Pagina};
 use zaptome_lector::{CachePresupuesto, Dimensiones, ImagenDecodificada, Maqueta};
 
+use crate::tema::Paleta;
+
 const ANCHO_PLACEHOLDER: u32 = 1000;
 const ALTO_PLACEHOLDER: u32 = 1400;
 const PRESUPUESTO_VRAM: usize = 256 * 1024 * 1024;
@@ -139,7 +141,7 @@ impl Lector {
     }
 
     /// Dibuja el capítulo en modo webtoon y devuelve las páginas que hay que pedir.
-    pub fn dibujar(&self, ui: &mut egui::Ui, pedir: &mut Vec<usize>) {
+    pub fn dibujar(&self, ui: &mut egui::Ui, pedir: &mut Vec<usize>, p: &Paleta) {
         let ancho = self.ancho_maqueta.max(1.0);
         let alto_total = self.maqueta.alto_total().max(1.0);
 
@@ -175,13 +177,13 @@ impl Lector {
                             );
                         }
                         None => {
-                            painter.rect_filled(rect_pagina, 0.0, egui::Color32::from_gray(40));
+                            painter.rect_filled(rect_pagina, 0.0, p.surface_container_high);
                             painter.text(
                                 rect_pagina.center(),
                                 egui::Align2::CENTER_CENTER,
                                 format!("Página {}", indice + 1),
                                 egui::FontId::proportional(16.0),
-                                egui::Color32::GRAY,
+                                p.on_surface_variant,
                             );
                             if !self.solicitadas.contains(&indice) {
                                 pedir.push(indice);
