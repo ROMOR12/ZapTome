@@ -23,7 +23,7 @@ extensiones. Todo acceso al exterior entra por **traits (puertos)**.
                         │                           │
         ┌───────────────┴───────────────┐  ┌────────┴───────────────┐
         │      zaptome-fuentes          │  │   zaptome-persistencia │
-        │ MangaDex · ComicK · Suwayomi  │  │        (SQLite)        │
+        │ MangaDex · Suwayomi           │  │        (SQLite)        │
         └───────────────────────────────┘  └────────────────────────┘
                         │
               ┌─────────┴──────────┐
@@ -37,7 +37,7 @@ extensiones. Todo acceso al exterior entra por **traits (puertos)**.
 |-------|-----------------|------------|
 | `zaptome-dominio` | Entidades, value objects, reglas y **traits de puertos**. Sin I/O. | (solo std / error) |
 | `zaptome-aplicacion` | Casos de uso; orquesta puertos. | dominio |
-| `zaptome-fuentes` | Adaptadores de fuentes: MangaDex, ComicK, Suwayomi. | dominio |
+| `zaptome-fuentes` | Adaptadores de fuentes: MangaDex y Suwayomi. | dominio |
 | `zaptome-persistencia` | Adaptador SQLite. | dominio |
 | `zaptome-lector` | Motor de lectura: virtualización, texturas, render wgpu. | dominio |
 | `zaptome-ui` | Interfaz egui. | aplicacion, lector |

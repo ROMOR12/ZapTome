@@ -13,7 +13,7 @@ Está pensada para Windows, Linux y macOS. Android llegará más adelante.
 
 ## Qué hace
 
-- Lee manga y manhwa desde varias fuentes, como MangaDex y ComicK.
+- Lee manga y manhwa desde varias fuentes, como MangaDex.
 - Soporta las extensiones de Tachiyomi con un motor local que solo se activa si se usa.
 - Guarda la biblioteca y el progreso en el propio ordenador.
 - Permite leer sin conexión los capítulos que se descarguen.

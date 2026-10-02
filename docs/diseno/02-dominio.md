@@ -9,7 +9,7 @@
 | `Obra` | Un manga/manhwa (título, sinopsis, portada, autores, estado, etiquetas). |
 | `Capitulo` | Un capítulo de una obra (número, título, fecha, idioma). |
 | `Pagina` | Una página/imagen de un capítulo (URL, dimensiones, índice). |
-| `Fuente` | Origen de datos (MangaDex, ComicK, o una extensión de Suwayomi). |
+| `Fuente` | Origen de datos (MangaDex o una extensión de Suwayomi). |
 | `EntradaBiblioteca` | Relación entre el usuario y una obra (categorías, favorito, seguimiento). |
 | `Progreso` | Estado de lectura de un capítulo (página actual, leído/no leído, fecha). |
 | `Descarga` | Estado de una descarga local de capítulo. |
@@ -22,7 +22,7 @@ Se modelan como tipos nuevos (newtypes) para no mezclar identificadores.
 ## Puertos (traits)
 
 ```rust
-// Fuente de contenido: la implementa cada adaptador (MangaDex, ComicK, Suwayomi).
+// Fuente de contenido: la implementa cada adaptador (MangaDex, Suwayomi).
 pub trait FuenteManga {
     fn id(&self) -> IdFuente;
     fn nombre(&self) -> &str;

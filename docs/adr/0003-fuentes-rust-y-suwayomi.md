@@ -9,13 +9,13 @@ Las extensiones de Tachiyomi/Mihon son **APK con bytecode Android (dex)**. No se
 ejecutar fuera de ART (Android) o de una **JVM** (Suwayomi convierte APK→JAR con
 `AndroidCompat`). Rust no puede ejecutarlas directamente.
 
-A la vez, existen fuentes con API HTTP estable (MangaDex, ComicK) que no necesitan motor.
+A la vez, existen fuentes con API HTTP estable (MangaDex) que no necesitan motor.
 
 ## Decisión
 
 Dos tipos de fuente, tras un mismo puerto `FuenteManga`:
 
-1. **APIs oficiales (MangaDex, ComicK):** implementadas **nativamente en Rust** (`reqwest`
+1. **APIs oficiales (MangaDex):** implementadas **nativamente en Rust** (`reqwest`
    + `serde`). No usan JVM → arranque y consultas inmediatos.
 2. **Extensiones de Tachiyomi:** se ejecutan en un **Suwayomi local** (sidecar JVM) que
    solo se usa si el usuario activa extensiones.

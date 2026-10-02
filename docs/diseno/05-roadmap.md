@@ -8,7 +8,7 @@
 ## Fase 1 — Lector nativo ultraveloz (sin JVM)
 
 - Shell Rust + egui + wgpu.
-- Fuentes **MangaDex** y **ComicK** en Rust.
+- Fuente **MangaDex** en Rust.
 - Lector GPU con **virtualización + tiling + presupuesto de VRAM**.
 - Biblioteca y progreso en **SQLite**.
 - **Aceptación:** abrir un webtoon de 60+ páginas y hacer scroll/zoom fluido sin agotar
