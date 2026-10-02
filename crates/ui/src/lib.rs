@@ -447,7 +447,6 @@ impl AppZapTome {
 
             egui::ComboBox::from_id_salt("fuente")
                 .width(150.0)
-                .height(ALTO_CONTROL)
                 .selected_text(
                     self.fuentes
                         .get(self.fuente_sel)
@@ -484,7 +483,6 @@ impl AppZapTome {
         ui.horizontal_wrapped(|ui| {
             egui::ComboBox::from_id_salt("filtro_estado")
                 .width(170.0)
-                .height(ALTO_CONTROL)
                 .selected_text(nombre_estado(self.filtros.estado))
                 .show_ui(ui, |ui| {
                     estilo_desplegable(ui);
@@ -513,7 +511,6 @@ impl AppZapTome {
 
             egui::ComboBox::from_id_salt("filtro_idioma")
                 .width(170.0)
-                .height(ALTO_CONTROL)
                 .selected_text(nombre_idioma(&self.filtros.idioma_original))
                 .show_ui(ui, |ui| {
                     estilo_desplegable(ui);
@@ -537,7 +534,6 @@ impl AppZapTome {
 
             egui::ComboBox::from_id_salt("filtro_demografia")
                 .width(190.0)
-                .height(ALTO_CONTROL)
                 .selected_text(nombre_demografia(&self.filtros.demografia))
                 .show_ui(ui, |ui| {
                     estilo_desplegable(ui);
@@ -570,7 +566,6 @@ impl AppZapTome {
 
             egui::ComboBox::from_id_salt("filtro_orden")
                 .width(170.0)
-                .height(ALTO_CONTROL)
                 .selected_text(nombre_orden(self.filtros.orden))
                 .show_ui(ui, |ui| {
                     estilo_desplegable(ui);
@@ -815,7 +810,7 @@ impl eframe::App for AppZapTome {
 
 /// Hace más alta la ventana desplegable para que se vean todas las opciones.
 fn estilo_desplegable(ui: &mut egui::Ui) {
-    ui.set_min_height(380.0);
+    ui.set_min_height(320.0);
 }
 
 fn nombre_estado(estado: Option<EstadoObra>) -> &'static str {
