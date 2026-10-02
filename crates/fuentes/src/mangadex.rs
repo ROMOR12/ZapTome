@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use zaptome_dominio::{
     Capitulo, Consulta, ErrorFuente, EstadoObra, FuenteManga, IdCapitulo, IdFuente, IdObra, Obra,
-    Pagina, TipoFuente,
+    Orden, Pagina, TipoFuente,
 };
 
 const BASE_POR_DEFECTO: &str = "https://api.mangadex.org";
@@ -86,16 +86,48 @@ impl FuenteManga for MangaDex {
     }
 
     async fn buscar(&self, consulta: &Consulta) -> Result<Vec<Obra>, ErrorFuente> {
-        let mut parametros: Vec<(&str, &str)> = vec![
-            ("limit", "20"),
-            ("includes[]", "cover_art"),
-            ("includes[]", "author"),
+        let mut parametros: Vec<(String, String)> = vec![
+            ("limit".into(), "20".into()),
+            ("includes[]".into(), "cover_art".into()),
+            ("includes[]".into(), "author".into()),
         ];
-        if consulta.texto.trim().is_empty() {
-            // Sin texto, mostramos los más seguidos para que siempre haya resultados.
-            parametros.push(("order[followedCount]", "desc"));
-        } else {
-            parametros.push(("title", consulta.texto.as_str()));
+
+        let texto = consulta.texto.trim();
+        if !texto.is_empty() {
+            parametros.push(("title".into(), texto.to_string()));
+        }
+
+        let filtros = &consulta.filtros;
+        if let Some(estado) = estado_a_mangadex(filtros.estado) {
+            parametros.push(("status[]".into(), estado.into()));
+        }
+        if let Some(idioma) = &filtros.idioma_original {
+            parametros.push(("originalLanguage[]".into(), idioma.clone()));
+        }
+        if let Some(demografia) = &filtros.demografia {
+            parametros.push(("publicationDemographic[]".into(), demografia.clone()));
+        }
+        if !filtros.incluir_adulto {
+            parametros.push(("contentRating[]".into(), "safe".into()));
+            parametros.push(("contentRating[]".into(), "suggestive".into()));
+        }
+
+        match filtros.orden {
+            Orden::Relevancia => {
+                // Sin texto, ordenamos por popularidad para que siempre haya resultados.
+                if texto.is_empty() {
+                    parametros.push(("order[followedCount]".into(), "desc".into()));
+                }
+            }
+            Orden::Popularidad => {
+                parametros.push(("order[followedCount]".into(), "desc".into()));
+            }
+            Orden::Recientes => {
+                parametros.push(("order[latestUploadedChapter]".into(), "desc".into()));
+            }
+            Orden::Titulo => {
+                parametros.push(("order[title]".into(), "asc".into()));
+            }
         }
 
         let peticion = self.cliente.get(self.url("/manga")).query(&parametros);
@@ -238,6 +270,16 @@ fn texto_localizado(mapa: &Localizado) -> String {
         .or_else(|| mapa.values().next())
         .cloned()
         .unwrap_or_default()
+}
+
+fn estado_a_mangadex(estado: Option<EstadoObra>) -> Option<&'static str> {
+    match estado {
+        Some(EstadoObra::EnCurso) => Some("ongoing"),
+        Some(EstadoObra::Finalizada) => Some("completed"),
+        Some(EstadoObra::Pausada) => Some("hiatus"),
+        Some(EstadoObra::Cancelada) => Some("cancelled"),
+        Some(EstadoObra::Desconocido) | None => None,
+    }
 }
 
 fn estado_desde(valor: Option<&str>) -> EstadoObra {

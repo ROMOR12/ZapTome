@@ -75,11 +75,41 @@ pub struct Pagina {
     pub alto: Option<u32>,
 }
 
+/// Criterio de ordenación de una búsqueda.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum Orden {
+    /// Relevancia respecto al texto buscado.
+    #[default]
+    Relevancia,
+    /// Las más seguidas primero.
+    Popularidad,
+    /// Las actualizadas más recientemente primero.
+    Recientes,
+    /// Orden alfabético por título.
+    Titulo,
+}
+
+/// Filtros opcionales de una búsqueda.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Filtros {
+    /// Estado de publicación.
+    pub estado: Option<EstadoObra>,
+    /// Idioma original, como `ja`, `ko` o `zh`.
+    pub idioma_original: Option<String>,
+    /// Demografía de publicación, como `shounen` o `seinen`.
+    pub demografia: Option<String>,
+    /// Si se incluye contenido para adultos.
+    pub incluir_adulto: bool,
+    /// Criterio de ordenación.
+    pub orden: Orden,
+}
+
 /// Parámetros de una búsqueda.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Consulta {
     pub texto: String,
     pub pagina: u32,
+    pub filtros: Filtros,
 }
 
 /// Entrada de la biblioteca del usuario.

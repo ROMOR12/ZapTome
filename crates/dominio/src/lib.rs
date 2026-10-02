@@ -10,8 +10,8 @@ pub mod puertos;
 
 pub use error::{ErrorFuente, ErrorPersistencia};
 pub use modelo::{
-    Capitulo, Consulta, EntradaBiblioteca, EstadoObra, Fuente, IdCapitulo, IdFuente, IdObra,
-    Obra, Pagina, Progreso, TipoFuente,
+    Capitulo, Consulta, EntradaBiblioteca, EstadoObra, Filtros, Fuente, IdCapitulo, IdFuente,
+    IdObra, Obra, Orden, Pagina, Progreso, TipoFuente,
 };
 pub use puertos::{
     CatalogoFuentes, FuenteManga, RepositorioAjustes, RepositorioBiblioteca, RepositorioProgreso,

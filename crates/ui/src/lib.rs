@@ -19,7 +19,8 @@ use tokio::sync::{mpsc, Semaphore};
 
 use zaptome_aplicacion::Servicio;
 use zaptome_dominio::{
-    Capitulo, Consulta, EntradaBiblioteca, EstadoObra, Fuente, IdFuente, IdObra, Obra, Pagina,
+    Capitulo, Consulta, EntradaBiblioteca, EstadoObra, Filtros, Fuente, IdFuente, IdObra, Obra,
+    Orden, Pagina,
 };
 use zaptome_lector::ImagenDecodificada;
 
@@ -86,6 +87,7 @@ pub struct AppZapTome {
     fuentes: Vec<Fuente>,
     fuente_sel: usize,
     consulta: String,
+    filtros: Filtros,
     resultados: Vec<Obra>,
     biblioteca: Vec<EntradaBiblioteca>,
     capitulos_obra: Option<(Obra, Vec<Capitulo>)>,
@@ -119,6 +121,7 @@ impl AppZapTome {
             fuentes,
             fuente_sel: 0,
             consulta: String::new(),
+            filtros: Filtros::default(),
             resultados: Vec::new(),
             biblioteca: Vec::new(),
             capitulos_obra: None,
@@ -185,6 +188,7 @@ impl AppZapTome {
         let consulta = Consulta {
             texto: self.consulta.clone(),
             pagina: 0,
+            filtros: self.filtros.clone(),
         };
         let servicio = self.servicio.clone();
         self.ocupado = true;
@@ -476,6 +480,109 @@ impl AppZapTome {
             }
         });
 
+        ui.add_space(8.0);
+        ui.horizontal_wrapped(|ui| {
+            egui::ComboBox::from_id_salt("filtro_estado")
+                .width(170.0)
+                .height(ALTO_CONTROL)
+                .selected_text(nombre_estado(self.filtros.estado))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.filtros.estado, None, "Cualquier estado");
+                    ui.selectable_value(
+                        &mut self.filtros.estado,
+                        Some(EstadoObra::EnCurso),
+                        "En curso",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.estado,
+                        Some(EstadoObra::Finalizada),
+                        "Finalizada",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.estado,
+                        Some(EstadoObra::Pausada),
+                        "Pausada",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.estado,
+                        Some(EstadoObra::Cancelada),
+                        "Cancelada",
+                    );
+                });
+
+            egui::ComboBox::from_id_salt("filtro_idioma")
+                .width(170.0)
+                .height(ALTO_CONTROL)
+                .selected_text(nombre_idioma(&self.filtros.idioma_original))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.filtros.idioma_original, None, "Cualquier idioma");
+                    ui.selectable_value(
+                        &mut self.filtros.idioma_original,
+                        Some("ja".to_string()),
+                        "Japonés",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.idioma_original,
+                        Some("ko".to_string()),
+                        "Coreano",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.idioma_original,
+                        Some("zh".to_string()),
+                        "Chino",
+                    );
+                });
+
+            egui::ComboBox::from_id_salt("filtro_demografia")
+                .width(190.0)
+                .height(ALTO_CONTROL)
+                .selected_text(nombre_demografia(&self.filtros.demografia))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        None,
+                        "Cualquier demografía",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        Some("shounen".to_string()),
+                        "Shounen",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        Some("shoujo".to_string()),
+                        "Shoujo",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        Some("seinen".to_string()),
+                        "Seinen",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        Some("josei".to_string()),
+                        "Josei",
+                    );
+                });
+
+            egui::ComboBox::from_id_salt("filtro_orden")
+                .width(170.0)
+                .height(ALTO_CONTROL)
+                .selected_text(nombre_orden(self.filtros.orden))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.filtros.orden, Orden::Relevancia, "Relevancia");
+                    ui.selectable_value(&mut self.filtros.orden, Orden::Popularidad, "Popularidad");
+                    ui.selectable_value(&mut self.filtros.orden, Orden::Recientes, "Recientes");
+                    ui.selectable_value(&mut self.filtros.orden, Orden::Titulo, "Título");
+                });
+
+            ui.checkbox(&mut self.filtros.incluir_adulto, "Contenido adulto");
+
+            if tema::boton_tonal(ui, "Limpiar", p).clicked() {
+                self.filtros = Filtros::default();
+            }
+        });
+
         ui.add_space(10.0);
         ui.separator();
         ui.add_space(6.0);
@@ -699,6 +806,47 @@ impl eframe::App for AppZapTome {
                 Pantalla::Capitulos => self.ui_capitulos(ui, ctx, &p),
                 Pantalla::Lector => self.ui_lector(ui, ctx, &p),
             });
+    }
+}
+
+fn nombre_estado(estado: Option<EstadoObra>) -> &'static str {
+    match estado {
+        None => "Estado: cualquiera",
+        Some(EstadoObra::EnCurso) => "En curso",
+        Some(EstadoObra::Finalizada) => "Finalizada",
+        Some(EstadoObra::Pausada) => "Pausada",
+        Some(EstadoObra::Cancelada) => "Cancelada",
+        Some(EstadoObra::Desconocido) => "Desconocido",
+    }
+}
+
+fn nombre_idioma(idioma: &Option<String>) -> &'static str {
+    match idioma.as_deref() {
+        None => "Idioma: cualquiera",
+        Some("ja") => "Japonés",
+        Some("ko") => "Coreano",
+        Some("zh") => "Chino",
+        _ => "Idioma",
+    }
+}
+
+fn nombre_demografia(demografia: &Option<String>) -> &'static str {
+    match demografia.as_deref() {
+        None => "Demografía: cualquiera",
+        Some("shounen") => "Shounen",
+        Some("shoujo") => "Shoujo",
+        Some("seinen") => "Seinen",
+        Some("josei") => "Josei",
+        _ => "Demografía",
+    }
+}
+
+fn nombre_orden(orden: Orden) -> &'static str {
+    match orden {
+        Orden::Relevancia => "Orden: relevancia",
+        Orden::Popularidad => "Popularidad",
+        Orden::Recientes => "Recientes",
+        Orden::Titulo => "Título",
     }
 }
 
