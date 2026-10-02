@@ -8,3 +8,6 @@ rust-version.workspace = true
 zaptome-dominio = { path = "../dominio" }
 zaptome-aplicacion = { path = "../aplicacion" }
 zaptome-lector = { path = "../lector" }
+eframe = { version = "0.30.0", default-features = false, features = ["wgpu", "default_fonts"] }
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "sync"] }
+reqwest = "0.13.3"
