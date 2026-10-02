@@ -1,0 +1,40 @@
+# Rust
+/target/
+**/*.rs.bk
+# Nota: Cargo.lock SÍ se versiona (es una aplicación, no una librería).
+
+# Build / empaquetado
+/dist/
+/build/
+*.msi
+*.dmg
+*.AppImage
+*.deb
+
+# Componente de extensiones descargado (JRE + Suwayomi)
+/vendor-jre/
+/suwayomi/
+
+# Datos locales / caché
+/data/
+/cache/
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Entorno
+.env
+.env.local
+
+# Instrucciones locales del agente (no versionar)
+AGENTS.md
