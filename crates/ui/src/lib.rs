@@ -3,6 +3,7 @@
 //! El área de lectura se dibuja en modo webtoon con virtualización: solo se descargan y
 //! se suben a GPU las páginas visibles y las cercanas.
 
+mod iconos;
 mod lector_view;
 mod tema;
 
@@ -18,7 +19,7 @@ use tokio::sync::{mpsc, Semaphore};
 
 use zaptome_aplicacion::Servicio;
 use zaptome_dominio::{
-    Capitulo, Consulta, EntradaBiblioteca, EstadoObra, Fuente, IdFuente, Obra, Pagina,
+    Capitulo, Consulta, EntradaBiblioteca, EstadoObra, Fuente, IdFuente, IdObra, Obra, Pagina,
 };
 use zaptome_lector::ImagenDecodificada;
 
@@ -26,7 +27,8 @@ use lector_view::Lector;
 use tema::Paleta;
 
 const MAX_DESCARGAS_SIMULTANEAS: usize = 4;
-const ANCHO_PORTADA: u32 = 240;
+const ANCHO_PORTADA: u32 = 320;
+const TAM_PORTADA: Vec2 = Vec2::new(104.0, 150.0);
 
 /// Estado de una portada en la caché.
 enum EstadoPortada {
@@ -52,6 +54,7 @@ enum Mensaje {
         url: String,
         resultado: Result<ImagenDecodificada, String>,
     },
+    Quitado(Result<(), String>),
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -201,6 +204,16 @@ impl AppZapTome {
         });
     }
 
+    fn quitar_de_biblioteca(&mut self, ctx: &Context, obra: IdObra, fuente: IdFuente) {
+        let servicio = self.servicio.clone();
+        self.tarea(ctx, async move {
+            match servicio.quitar_de_biblioteca(&obra, &fuente).await {
+                Ok(()) => Mensaje::Quitado(Ok(())),
+                Err(e) => Mensaje::Quitado(Err(e.to_string())),
+            }
+        });
+    }
+
     fn cargar_capitulos(&mut self, ctx: &Context, obra: Obra) {
         let servicio = self.servicio.clone();
         self.ocupado = true;
@@ -334,12 +347,18 @@ impl AppZapTome {
                         self.portadas.insert(url, EstadoPortada::Fallida);
                     }
                 },
+                Mensaje::Quitado(Ok(())) => {
+                    self.cargar_biblioteca(ctx);
+                }
+                Mensaje::Quitado(Err(e)) => {
+                    self.error = Some(e);
+                }
             }
         }
     }
 
     fn ui_biblioteca(&mut self, ui: &mut egui::Ui, ctx: &Context, p: &Paleta) {
-        ui.label(RichText::new("Biblioteca").size(22.0).strong());
+        ui.label(tema::titulo("Biblioteca", 22.0));
         ui.add_space(4.0);
 
         if self.biblioteca.is_empty() {
@@ -351,6 +370,7 @@ impl AppZapTome {
         }
 
         let mut abrir: Option<Obra> = None;
+        let mut borrar: Option<(IdObra, IdFuente)> = None;
         let mut pedir_portadas: Vec<String> = Vec::new();
 
         egui::ScrollArea::vertical().show(ui, |ui| {
@@ -363,17 +383,20 @@ impl AppZapTome {
                                 pedir_portadas.push(url.clone());
                             }
                         }
-                        ui.add_space(4.0);
-                        ui.label(
-                            RichText::new(&entrada.titulo)
-                                .size(16.0)
-                                .strong()
-                                .color(p.on_surface),
-                        );
-                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            if tema::boton_relleno(ui, "Capítulos", p).clicked() {
-                                abrir = Some(obra_desde_entrada(entrada));
-                            }
+                        ui.add_space(6.0);
+                        ui.vertical(|ui| {
+                            ui.label(tema::titulo(&entrada.titulo, 17.0));
+                            ui.add_space(6.0);
+                            ui.horizontal(|ui| {
+                                if tema::boton_relleno(ui, "Capítulos", p).clicked() {
+                                    abrir = Some(obra_desde_entrada(entrada));
+                                }
+                                if tema::boton_icono(ui, iconos::PAPELERA, 20.0, p.on_surface_variant)
+                                    .clicked()
+                                {
+                                    borrar = Some((entrada.obra.clone(), entrada.fuente.clone()));
+                                }
+                            });
                         });
                     });
                 });
@@ -384,16 +407,46 @@ impl AppZapTome {
         for url in pedir_portadas {
             self.solicitar_portada(ctx, &url);
         }
+        if let Some((obra, fuente)) = borrar {
+            self.quitar_de_biblioteca(ctx, obra, fuente);
+        }
         if let Some(obra) = abrir {
             self.cargar_capitulos(ctx, obra);
         }
     }
 
     fn ui_buscar(&mut self, ui: &mut egui::Ui, ctx: &Context, p: &Paleta) {
-        ui.label(RichText::new("Buscar").size(22.0).strong());
-        ui.add_space(4.0);
+        ui.label(tema::titulo("Buscar", 22.0));
+        ui.add_space(6.0);
 
+        Frame::none()
+            .fill(p.surface_container_high)
+            .rounding(Rounding::same(28.0))
+            .inner_margin(Margin::symmetric(18.0, 6.0))
+            .show(ui, |ui| {
+                ui.horizontal_centered(|ui| {
+                    ui.label(
+                        RichText::new(iconos::BUSCAR)
+                            .size(20.0)
+                            .color(p.on_surface_variant),
+                    );
+                    let ancho_campo = (ui.available_width() - 120.0).max(140.0);
+                    let campo = ui.add(
+                        egui::TextEdit::singleline(&mut self.consulta)
+                            .frame(false)
+                            .hint_text("Buscar manga o manhwa…")
+                            .desired_width(ancho_campo),
+                    );
+                    let enter = campo.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                    if tema::boton_relleno(ui, "Buscar", p).clicked() || enter {
+                        self.iniciar_busqueda(ctx);
+                    }
+                });
+            });
+
+        ui.add_space(8.0);
         ui.horizontal(|ui| {
+            ui.label(RichText::new("Fuente").color(p.on_surface_variant));
             egui::ComboBox::from_id_salt("fuente")
                 .selected_text(
                     self.fuentes
@@ -406,19 +459,9 @@ impl AppZapTome {
                         ui.selectable_value(&mut self.fuente_sel, i, &fuente.nombre);
                     }
                 });
-
-            let campo = ui.add(
-                egui::TextEdit::singleline(&mut self.consulta)
-                    .hint_text("Título del manga o manhwa")
-                    .desired_width(320.0),
-            );
-            let enter = campo.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-            if tema::boton_relleno(ui, "Buscar", p).clicked() || enter {
-                self.iniciar_busqueda(ctx);
-            }
         });
 
-        ui.add_space(10.0);
+        ui.add_space(12.0);
 
         let mut abrir: Option<Obra> = None;
         let mut pedir_portadas: Vec<String> = Vec::new();
@@ -433,22 +476,18 @@ impl AppZapTome {
                                 pedir_portadas.push(url.clone());
                             }
                         }
-                        ui.add_space(4.0);
+                        ui.add_space(6.0);
                         ui.vertical(|ui| {
-                            ui.label(
-                                RichText::new(&obra.titulo)
-                                    .size(16.0)
-                                    .strong()
-                                    .color(p.on_surface),
-                            );
+                            ui.label(tema::titulo(&obra.titulo, 17.0));
                             if let Some(sinopsis) = &obra.sinopsis {
-                                let recorte: String = sinopsis.chars().take(160).collect();
+                                let recorte: String = sinopsis.chars().take(120).collect();
                                 ui.label(
-                                    RichText::new(recorte).size(13.0).color(p.on_surface_variant),
+                                    RichText::new(format!("{recorte}…"))
+                                        .size(13.0)
+                                        .color(p.on_surface_variant),
                                 );
                             }
-                        });
-                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            ui.add_space(6.0);
                             if tema::boton_relleno(ui, "Abrir", p).clicked() {
                                 abrir = Some(obra.clone());
                             }
@@ -473,10 +512,10 @@ impl AppZapTome {
         };
 
         ui.horizontal(|ui| {
-            if tema::boton_texto(ui, "← Volver", p).clicked() {
+            if tema::boton_icono(ui, iconos::ATRAS, 22.0, p.on_surface_variant).clicked() {
                 self.pantalla = Pantalla::Biblioteca;
             }
-            ui.label(RichText::new(&obra.titulo).size(22.0).strong());
+            ui.label(tema::titulo(&obra.titulo, 22.0));
         });
         ui.label(
             RichText::new(format!("{} capítulos", capitulos.len())).color(p.on_surface_variant),
@@ -488,11 +527,7 @@ impl AppZapTome {
             for capitulo in &capitulos {
                 tema::tarjeta(ui, p, |ui| {
                     ui.horizontal(|ui| {
-                        ui.label(
-                            RichText::new(&capitulo.titulo)
-                                .size(15.0)
-                                .color(p.on_surface),
-                        );
+                        ui.label(RichText::new(&capitulo.titulo).size(15.0));
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                             if tema::boton_tonal(ui, "Leer", p).clicked() {
                                 elegido = Some(capitulo.clone());
@@ -515,16 +550,11 @@ impl AppZapTome {
 
         if let Some(lector) = &mut self.lector {
             ui.horizontal(|ui| {
-                if tema::boton_tonal(ui, "← Volver", p).clicked() {
+                if tema::boton_icono(ui, iconos::ATRAS, 22.0, p.on_surface_variant).clicked() {
                     volver = true;
                 }
-                ui.add_space(6.0);
-                ui.label(
-                    RichText::new(&lector.obra.titulo)
-                        .size(18.0)
-                        .strong()
-                        .color(p.on_surface),
-                );
+                ui.add_space(4.0);
+                ui.label(tema::titulo(&lector.obra.titulo, 18.0));
                 ui.label(RichText::new(&lector.capitulo.titulo).color(p.on_surface_variant));
                 ui.label(RichText::new(format!("· {}", lector.fuente.0)).color(p.outline));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -577,10 +607,14 @@ impl eframe::App for AppZapTome {
             )
             .show(ctx, |ui| {
                 ui.horizontal_centered(|ui| {
-                    ui.label(RichText::new("ZapTome").size(24.0).strong().color(p.primary));
+                    ui.label(tema::titulo("ZapTome", 24.0).color(p.primary));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        let icono = if self.oscuro { "☀" } else { "🌙" };
-                        if tema::boton_texto(ui, icono, &p).clicked() {
+                        let glyph = if self.oscuro {
+                            iconos::CLARO
+                        } else {
+                            iconos::OSCURO
+                        };
+                        if tema::boton_icono(ui, glyph, 22.0, p.on_surface_variant).clicked() {
                             self.oscuro = !self.oscuro;
                         }
                         if self.ocupado {
@@ -605,12 +639,24 @@ impl eframe::App for AppZapTome {
                 .show(ctx, |ui| {
                     ui.vertical_centered(|ui| {
                         ui.add_space(4.0);
-                        if boton_nav(ui, &p, self.pantalla == Pantalla::Biblioteca, "📚", "Biblioteca") {
+                        if boton_nav(
+                            ui,
+                            &p,
+                            self.pantalla == Pantalla::Biblioteca,
+                            iconos::BIBLIOTECA,
+                            "Biblioteca",
+                        ) {
                             self.pantalla = Pantalla::Biblioteca;
                             self.cargar_biblioteca(ctx);
                         }
                         ui.add_space(6.0);
-                        if boton_nav(ui, &p, self.pantalla == Pantalla::Buscar, "🔍", "Buscar") {
+                        if boton_nav(
+                            ui,
+                            &p,
+                            self.pantalla == Pantalla::Buscar,
+                            iconos::BUSCAR,
+                            "Buscar",
+                        ) {
                             self.pantalla = Pantalla::Buscar;
                         }
                     });
@@ -636,7 +682,7 @@ impl eframe::App for AppZapTome {
 
 /// Dibuja una portada con relación 2:3, o un marcador si aún no está.
 fn portada_widget(ui: &mut egui::Ui, p: &Paleta, textura: Option<egui::TextureId>) {
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(64.0, 92.0), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(TAM_PORTADA, Sense::hover());
     match textura {
         Some(id) => {
             ui.painter().image(
@@ -648,14 +694,25 @@ fn portada_widget(ui: &mut egui::Ui, p: &Paleta, textura: Option<egui::TextureId
         }
         None => {
             ui.painter()
-                .rect_filled(rect, Rounding::same(8.0), p.surface_container_high);
+                .rect_filled(rect, Rounding::same(10.0), p.surface_container_high);
         }
     }
 }
 
-/// Botón del riel de navegación.
+/// Botón del riel de navegación, con indicador animado.
 fn boton_nav(ui: &mut egui::Ui, p: &Paleta, activo: bool, icono: &str, texto: &str) -> bool {
     let (rect, respuesta) = ui.allocate_exact_size(Vec2::new(72.0, 60.0), Sense::click());
+
+    let t = ui
+        .ctx()
+        .animate_bool_with_time(ui.id().with(("nav", texto)), activo, 0.22);
+    if t > 0.01 {
+        ui.painter().rect_filled(
+            rect,
+            Rounding::same(16.0),
+            p.secondary_container.gamma_multiply(t),
+        );
+    }
 
     let color = if activo {
         p.on_secondary_container
@@ -664,9 +721,6 @@ fn boton_nav(ui: &mut egui::Ui, p: &Paleta, activo: bool, icono: &str, texto: &s
     };
 
     let pintor = ui.painter();
-    if activo {
-        pintor.rect_filled(rect, Rounding::same(16.0), p.secondary_container);
-    }
     pintor.text(
         rect.center() - Vec2::new(0.0, 11.0),
         Align2::CENTER_CENTER,
@@ -716,7 +770,10 @@ pub fn ejecutar(servicio: Servicio) -> Result<(), String> {
     eframe::run_native(
         "ZapTome",
         opciones,
-        Box::new(move |_cc| Ok(Box::new(AppZapTome::nuevo(servicio, runtime)))),
+        Box::new(move |cc| {
+            tema::instalar_fuentes(&cc.egui_ctx);
+            Ok(Box::new(AppZapTome::nuevo(servicio, runtime)))
+        }),
     )
     .map_err(|e| e.to_string())
 }

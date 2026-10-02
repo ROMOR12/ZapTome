@@ -1,6 +1,7 @@
 //! Vista del lector: virtualización, texturas y presupuesto de VRAM.
 
 use std::collections::{HashMap, HashSet};
+use std::time::Instant;
 
 use eframe::egui;
 
@@ -13,6 +14,7 @@ const ANCHO_PLACEHOLDER: u32 = 1000;
 const ALTO_PLACEHOLDER: u32 = 1400;
 const PRESUPUESTO_VRAM: usize = 256 * 1024 * 1024;
 const MARGEN_PAGINAS: usize = 2;
+const DURACION_APARICION: f32 = 0.28;
 
 /// Estado del lector para un capítulo abierto.
 pub struct Lector {
@@ -25,6 +27,7 @@ pub struct Lector {
     dimensiones: Vec<Option<Dimensiones>>,
     texturas: HashMap<usize, egui::TextureHandle>,
     solicitadas: HashSet<usize>,
+    apariciones: HashMap<usize, Instant>,
     cache: CachePresupuesto<usize>,
     maqueta: Maqueta,
     ancho_maqueta: f32,
@@ -51,6 +54,7 @@ impl Lector {
             dimensiones,
             texturas: HashMap::new(),
             solicitadas: HashSet::new(),
+            apariciones: HashMap::new(),
             cache: CachePresupuesto::nuevo(PRESUPUESTO_VRAM),
             maqueta: Maqueta::webtoon(1.0, &[]),
             ancho_maqueta: 0.0,
@@ -132,11 +136,13 @@ impl Lector {
             });
         }
         self.solicitadas.remove(&indice);
+        self.apariciones.insert(indice, Instant::now());
         self.sucia = true;
 
         let desalojadas = self.cache.registrar(indice, bytes);
         for clave in desalojadas {
             self.texturas.remove(&clave);
+            self.apariciones.remove(&clave);
         }
     }
 
@@ -144,6 +150,7 @@ impl Lector {
     pub fn dibujar(&self, ui: &mut egui::Ui, pedir: &mut Vec<usize>, p: &Paleta) {
         let ancho = self.ancho_maqueta.max(1.0);
         let alto_total = self.maqueta.alto_total().max(1.0);
+        let mut animando = false;
 
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
@@ -166,6 +173,15 @@ impl Lector {
 
                     match self.texturas.get(&indice) {
                         Some(textura) => {
+                            let alpha = self
+                                .apariciones
+                                .get(&indice)
+                                .map(|t| (t.elapsed().as_secs_f32() / DURACION_APARICION).min(1.0))
+                                .unwrap_or(1.0);
+                            if alpha < 1.0 {
+                                animando = true;
+                            }
+                            let tint = egui::Color32::from_white_alpha((alpha * 255.0) as u8);
                             painter.image(
                                 textura.id(),
                                 rect_pagina,
@@ -173,7 +189,7 @@ impl Lector {
                                     egui::pos2(0.0, 0.0),
                                     egui::pos2(1.0, 1.0),
                                 ),
-                                egui::Color32::WHITE,
+                                tint,
                             );
                         }
                         None => {
@@ -192,5 +208,9 @@ impl Lector {
                     }
                 }
             });
+
+        if animando {
+            ui.ctx().request_repaint();
+        }
     }
 }

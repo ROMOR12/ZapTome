@@ -1,10 +1,11 @@
 //! Tema Material 3 para la interfaz.
 //!
-//! Define la paleta por roles de color, aplica el estilo a egui y ofrece componentes
-//! básicos (botones y tarjetas) con el aspecto de Material 3.
+//! Define la paleta por roles de color, instala las fuentes (Roboto + iconos), aplica el
+//! estilo a egui y ofrece componentes básicos con el aspecto de Material 3.
 
 use eframe::egui::{
-    self, Color32, Context, Frame, Margin, Response, RichText, Rounding, Stroke, Ui, Vec2,
+    self, Color32, Context, FontData, FontDefinitions, FontFamily, Frame, Margin, Response,
+    RichText, Rounding, Stroke, Ui, Vec2,
 };
 
 /// Paleta de color según los roles de Material 3.
@@ -72,6 +73,46 @@ pub fn paleta(oscuro: bool) -> Paleta {
     }
 }
 
+/// Instala las fuentes: Roboto para el texto, Roboto Bold para los títulos y Material
+/// Icons para los iconos. Se llama una sola vez, al arrancar.
+pub fn instalar_fuentes(ctx: &Context) {
+    let mut fuentes = FontDefinitions::default();
+
+    fuentes.font_data.insert(
+        "roboto".to_owned(),
+        FontData::from_static(include_bytes!("../assets/fonts/Roboto-Regular.ttf")).into(),
+    );
+    fuentes.font_data.insert(
+        "roboto-bold".to_owned(),
+        FontData::from_static(include_bytes!("../assets/fonts/Roboto-Bold.ttf")).into(),
+    );
+    fuentes.font_data.insert(
+        "iconos".to_owned(),
+        FontData::from_static(include_bytes!("../assets/fonts/MaterialIcons-Regular.ttf")).into(),
+    );
+
+    let proporcional = fuentes
+        .families
+        .entry(FontFamily::Proportional)
+        .or_default();
+    proporcional.insert(0, "roboto".to_owned());
+    proporcional.push("iconos".to_owned());
+
+    fuentes.families.insert(
+        FontFamily::Name("negrita".into()),
+        vec!["roboto-bold".to_owned()],
+    );
+
+    ctx.set_fonts(fuentes);
+}
+
+/// Texto en negrita para títulos.
+pub fn titulo(texto: impl Into<String>, tam: f32) -> RichText {
+    RichText::new(texto)
+        .size(tam)
+        .family(FontFamily::Name("negrita".into()))
+}
+
 /// Aplica el estilo Material 3 a egui.
 pub fn aplicar(ctx: &Context, oscuro: bool) {
     let p = paleta(oscuro);
@@ -118,13 +159,15 @@ pub fn aplicar(ctx: &Context, oscuro: bool) {
     estilo.spacing.item_spacing = Vec2::new(10.0, 10.0);
     estilo.spacing.button_padding = Vec2::new(16.0, 9.0);
     estilo.spacing.interact_size.y = 40.0;
+    // Transiciones suaves al pasar el ratón y al pulsar.
+    estilo.animation_time = 0.22;
     ctx.set_style(estilo);
 }
 
 /// Botón relleno, para la acción principal.
 pub fn boton_relleno(ui: &mut Ui, texto: &str, p: &Paleta) -> Response {
     ui.add(
-        egui::Button::new(RichText::new(texto).color(p.on_primary).strong())
+        egui::Button::new(RichText::new(texto).color(p.on_primary))
             .fill(p.primary)
             .rounding(Rounding::same(20.0)),
     )
@@ -139,13 +182,24 @@ pub fn boton_tonal(ui: &mut Ui, texto: &str, p: &Paleta) -> Response {
     )
 }
 
-/// Botón de texto, para acciones terciarias.
-pub fn boton_texto(ui: &mut Ui, texto: &str, p: &Paleta) -> Response {
-    ui.add(
-        egui::Button::new(RichText::new(texto).color(p.primary))
-            .fill(Color32::TRANSPARENT)
-            .rounding(Rounding::same(20.0)),
-    )
+/// Botón de icono, redondo y sin relleno.
+pub fn boton_icono(ui: &mut Ui, glyph: &str, tam: f32, color: Color32) -> Response {
+    let lado = tam + 18.0;
+    let (rect, respuesta) = ui.allocate_exact_size(Vec2::splat(lado), egui::Sense::click());
+
+    if respuesta.hovered() {
+        ui.painter()
+            .rect_filled(rect, Rounding::same(lado / 2.0), color.gamma_multiply(0.12));
+    }
+    ui.painter().text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        glyph,
+        egui::FontId::proportional(tam),
+        color,
+    );
+
+    respuesta
 }
 
 /// Tarjeta contenedora con superficie y borde suaves.
