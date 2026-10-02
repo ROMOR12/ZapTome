@@ -30,6 +30,7 @@ const MAX_DESCARGAS_SIMULTANEAS: usize = 4;
 const ANCHO_PORTADA: u32 = 320;
 const TAM_PORTADA: Vec2 = Vec2::new(104.0, 150.0);
 const ALTO_CONTROL: f32 = 40.0;
+const MAX_DESCARGAS_PORTADAS: usize = 6;
 
 /// Estado de una portada en la caché.
 enum EstadoPortada {
@@ -74,6 +75,7 @@ pub struct AppZapTome {
     tx: mpsc::UnboundedSender<Mensaje>,
     rx: mpsc::UnboundedReceiver<Mensaje>,
     semaforo: Arc<Semaphore>,
+    semaforo_portadas: Arc<Semaphore>,
 
     pantalla: Pantalla,
     oscuro: bool,
@@ -108,6 +110,7 @@ impl AppZapTome {
             tx,
             rx,
             semaforo: Arc::new(Semaphore::new(MAX_DESCARGAS_SIMULTANEAS)),
+            semaforo_portadas: Arc::new(Semaphore::new(MAX_DESCARGAS_PORTADAS)),
             pantalla: Pantalla::Biblioteca,
             oscuro: true,
             iniciado: false,
@@ -154,7 +157,7 @@ impl AppZapTome {
         let cliente = self.cliente.clone();
         let tx = self.tx.clone();
         let ctx = ctx.clone();
-        let semaforo = self.semaforo.clone();
+        let semaforo = self.semaforo_portadas.clone();
         let url_tarea = url.to_string();
 
         self.runtime.spawn(async move {
@@ -379,9 +382,10 @@ impl AppZapTome {
                 tema::tarjeta(ui, p, |ui| {
                     ui.horizontal_top(|ui| {
                         if let Some(url) = &entrada.portada {
-                            portada_widget(ui, p, self.textura_portada(url));
-                            if !self.portadas.contains_key(url) {
-                                pedir_portadas.push(url.clone());
+                            let url = url_miniatura(url);
+                            portada_widget(ui, p, self.textura_portada(&url));
+                            if !self.portadas.contains_key(&url) {
+                                pedir_portadas.push(url);
                             }
                         }
                         ui.add_space(8.0);
@@ -484,9 +488,10 @@ impl AppZapTome {
                 tema::tarjeta(ui, p, |ui| {
                     ui.horizontal_top(|ui| {
                         if let Some(url) = &obra.portada {
-                            portada_widget(ui, p, self.textura_portada(url));
-                            if !self.portadas.contains_key(url) {
-                                pedir_portadas.push(url.clone());
+                            let url = url_miniatura(url);
+                            portada_widget(ui, p, self.textura_portada(&url));
+                            if !self.portadas.contains_key(&url) {
+                                pedir_portadas.push(url);
                             }
                         }
                         ui.add_space(8.0);
@@ -694,6 +699,18 @@ impl eframe::App for AppZapTome {
                 Pantalla::Capitulos => self.ui_capitulos(ui, ctx, &p),
                 Pantalla::Lector => self.ui_lector(ui, ctx, &p),
             });
+    }
+}
+
+/// Devuelve una versión reducida de la portada cuando la fuente la ofrece.
+fn url_miniatura(url: &str) -> String {
+    if url.contains("uploads.mangadex.org/covers/")
+        && !url.ends_with(".256.jpg")
+        && !url.ends_with(".512.jpg")
+    {
+        format!("{url}.256.jpg")
+    } else {
+        url.to_string()
     }
 }
 

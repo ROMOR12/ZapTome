@@ -285,7 +285,9 @@ impl MangaDto {
                 "cover_art" => {
                     if let Some(attrs) = &relacion.attributes {
                         if let Some(archivo) = &attrs.file_name {
-                            portada = Some(format!("{}/{}/{}", BASE_PORTADAS, self.id, archivo));
+                            // Se pide la miniatura para no descargar la portada completa.
+                            portada =
+                                Some(format!("{}/{}/{}.256.jpg", BASE_PORTADAS, self.id, archivo));
                         }
                     }
                 }
@@ -379,7 +381,7 @@ mod tests {
         assert_eq!(obra.autores, vec!["Autor Uno".to_string()]);
         assert_eq!(
             obra.portada.as_deref(),
-            Some("https://uploads.mangadex.org/covers/abc-123/cover.jpg")
+            Some("https://uploads.mangadex.org/covers/abc-123/cover.jpg.256.jpg")
         );
         assert_eq!(obra.etiquetas, vec!["Action".to_string()]);
     }
