@@ -86,12 +86,19 @@ impl FuenteManga for MangaDex {
     }
 
     async fn buscar(&self, consulta: &Consulta) -> Result<Vec<Obra>, ErrorFuente> {
-        let peticion = self.cliente.get(self.url("/manga")).query(&[
-            ("title", consulta.texto.as_str()),
+        let mut parametros: Vec<(&str, &str)> = vec![
             ("limit", "20"),
             ("includes[]", "cover_art"),
             ("includes[]", "author"),
-        ]);
+        ];
+        if consulta.texto.trim().is_empty() {
+            // Sin texto, mostramos los más seguidos para que siempre haya resultados.
+            parametros.push(("order[followedCount]", "desc"));
+        } else {
+            parametros.push(("title", consulta.texto.as_str()));
+        }
+
+        let peticion = self.cliente.get(self.url("/manga")).query(&parametros);
         let respuesta: RespuestaLista<MangaDto> = self.enviar_json(peticion).await?;
         Ok(respuesta.data.iter().map(MangaDto::a_obra).collect())
     }

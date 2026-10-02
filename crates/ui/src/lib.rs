@@ -29,6 +29,7 @@ use tema::Paleta;
 const MAX_DESCARGAS_SIMULTANEAS: usize = 4;
 const ANCHO_PORTADA: u32 = 320;
 const TAM_PORTADA: Vec2 = Vec2::new(104.0, 150.0);
+const ALTO_CONTROL: f32 = 40.0;
 
 /// Estado de una portada en la caché.
 enum EstadoPortada {
@@ -437,6 +438,8 @@ impl AppZapTome {
             ui.add_space(10.0);
 
             egui::ComboBox::from_id_salt("fuente")
+                .width(150.0)
+                .height(ALTO_CONTROL)
                 .selected_text(
                     self.fuentes
                         .get(self.fuente_sel)
@@ -449,13 +452,19 @@ impl AppZapTome {
                     }
                 });
 
-            let campo = ui.add(
-                egui::TextEdit::singleline(&mut self.consulta)
-                    .hint_text("Buscar manga o manhwa…")
-                    .desired_width(340.0),
+            let campo = ui.add_sized(
+                Vec2::new(340.0, ALTO_CONTROL),
+                egui::TextEdit::singleline(&mut self.consulta).hint_text("Buscar manga o manhwa…"),
             );
             let enter = campo.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-            if tema::boton_relleno(ui, "Buscar", p).clicked() || enter {
+
+            let boton = ui.add_sized(
+                Vec2::new(110.0, ALTO_CONTROL),
+                egui::Button::new(RichText::new("Buscar").color(p.on_primary))
+                    .fill(p.primary)
+                    .rounding(Rounding::same(20.0)),
+            );
+            if boton.clicked() || enter {
                 self.iniciar_busqueda(ctx);
             }
         });
@@ -662,6 +671,7 @@ impl eframe::App for AppZapTome {
                             "Buscar",
                         ) {
                             self.pantalla = Pantalla::Buscar;
+                            self.iniciar_busqueda(ctx);
                         }
                     });
                 });
