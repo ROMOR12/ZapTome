@@ -32,7 +32,6 @@ const ANCHO_PORTADA: u32 = 320;
 const TAM_PORTADA: Vec2 = Vec2::new(104.0, 150.0);
 const ALTO_CONTROL: f32 = 40.0;
 const MAX_DESCARGAS_PORTADAS: usize = 6;
-const ALTO_FILTRO: f32 = 80.0;
 
 /// Estado de una portada en la caché.
 enum EstadoPortada {
@@ -482,125 +481,110 @@ impl AppZapTome {
         });
 
         ui.add_space(8.0);
-        ui.scope(|ui| {
-            ui.style_mut()
-                .text_styles
-                .insert(egui::TextStyle::Body, FontId::proportional(20.0));
-            ui.style_mut()
-                .text_styles
-                .insert(egui::TextStyle::Button, FontId::proportional(20.0));
+        ui.horizontal_wrapped(|ui| {
+            egui::ComboBox::from_id_salt("filtro_estado")
+                .width(170.0)
+                .height(ALTO_CONTROL)
+                .selected_text(nombre_estado(self.filtros.estado))
+                .show_ui(ui, |ui| {
+                    estilo_desplegable(ui);
+                    ui.selectable_value(&mut self.filtros.estado, None, "Cualquier estado");
+                    ui.selectable_value(
+                        &mut self.filtros.estado,
+                        Some(EstadoObra::EnCurso),
+                        "En curso",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.estado,
+                        Some(EstadoObra::Finalizada),
+                        "Finalizada",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.estado,
+                        Some(EstadoObra::Pausada),
+                        "Pausada",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.estado,
+                        Some(EstadoObra::Cancelada),
+                        "Cancelada",
+                    );
+                });
 
-            ui.horizontal_wrapped(|ui| {
-                egui::ComboBox::from_id_salt("filtro_estado")
-                    .width(340.0)
-                    .height(ALTO_FILTRO)
-                    .selected_text(nombre_estado(self.filtros.estado))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.filtros.estado, None, "Cualquier estado");
-                        ui.selectable_value(
-                            &mut self.filtros.estado,
-                            Some(EstadoObra::EnCurso),
-                            "En curso",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.estado,
-                            Some(EstadoObra::Finalizada),
-                            "Finalizada",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.estado,
-                            Some(EstadoObra::Pausada),
-                            "Pausada",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.estado,
-                            Some(EstadoObra::Cancelada),
-                            "Cancelada",
-                        );
-                    });
+            egui::ComboBox::from_id_salt("filtro_idioma")
+                .width(170.0)
+                .height(ALTO_CONTROL)
+                .selected_text(nombre_idioma(&self.filtros.idioma_original))
+                .show_ui(ui, |ui| {
+                    estilo_desplegable(ui);
+                    ui.selectable_value(&mut self.filtros.idioma_original, None, "Cualquier idioma");
+                    ui.selectable_value(
+                        &mut self.filtros.idioma_original,
+                        Some("ja".to_string()),
+                        "Japonés",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.idioma_original,
+                        Some("ko".to_string()),
+                        "Coreano",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.idioma_original,
+                        Some("zh".to_string()),
+                        "Chino",
+                    );
+                });
 
-                egui::ComboBox::from_id_salt("filtro_idioma")
-                    .width(340.0)
-                    .height(ALTO_FILTRO)
-                    .selected_text(nombre_idioma(&self.filtros.idioma_original))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.filtros.idioma_original,
-                            None,
-                            "Cualquier idioma",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.idioma_original,
-                            Some("ja".to_string()),
-                            "Japonés",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.idioma_original,
-                            Some("ko".to_string()),
-                            "Coreano",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.idioma_original,
-                            Some("zh".to_string()),
-                            "Chino",
-                        );
-                    });
+            egui::ComboBox::from_id_salt("filtro_demografia")
+                .width(190.0)
+                .height(ALTO_CONTROL)
+                .selected_text(nombre_demografia(&self.filtros.demografia))
+                .show_ui(ui, |ui| {
+                    estilo_desplegable(ui);
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        None,
+                        "Cualquier demografía",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        Some("shounen".to_string()),
+                        "Shounen",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        Some("shoujo".to_string()),
+                        "Shoujo",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        Some("seinen".to_string()),
+                        "Seinen",
+                    );
+                    ui.selectable_value(
+                        &mut self.filtros.demografia,
+                        Some("josei".to_string()),
+                        "Josei",
+                    );
+                });
 
-                egui::ComboBox::from_id_salt("filtro_demografia")
-                    .width(380.0)
-                    .height(ALTO_FILTRO)
-                    .selected_text(nombre_demografia(&self.filtros.demografia))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.filtros.demografia,
-                            None,
-                            "Cualquier demografía",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.demografia,
-                            Some("shounen".to_string()),
-                            "Shounen",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.demografia,
-                            Some("shoujo".to_string()),
-                            "Shoujo",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.demografia,
-                            Some("seinen".to_string()),
-                            "Seinen",
-                        );
-                        ui.selectable_value(
-                            &mut self.filtros.demografia,
-                            Some("josei".to_string()),
-                            "Josei",
-                        );
-                    });
+            egui::ComboBox::from_id_salt("filtro_orden")
+                .width(170.0)
+                .height(ALTO_CONTROL)
+                .selected_text(nombre_orden(self.filtros.orden))
+                .show_ui(ui, |ui| {
+                    estilo_desplegable(ui);
+                    ui.selectable_value(&mut self.filtros.orden, Orden::Relevancia, "Relevancia");
+                    ui.selectable_value(&mut self.filtros.orden, Orden::Popularidad, "Popularidad");
+                    ui.selectable_value(&mut self.filtros.orden, Orden::Recientes, "Recientes");
+                    ui.selectable_value(&mut self.filtros.orden, Orden::Titulo, "Título");
+                });
 
-                egui::ComboBox::from_id_salt("filtro_orden")
-                    .width(340.0)
-                    .height(ALTO_FILTRO)
-                    .selected_text(nombre_orden(self.filtros.orden))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.filtros.orden, Orden::Relevancia, "Relevancia");
-                        ui.selectable_value(&mut self.filtros.orden, Orden::Popularidad, "Popularidad");
-                        ui.selectable_value(&mut self.filtros.orden, Orden::Recientes, "Recientes");
-                        ui.selectable_value(&mut self.filtros.orden, Orden::Titulo, "Título");
-                    });
+            ui.checkbox(&mut self.filtros.incluir_adulto, "Contenido adulto");
 
-                ui.checkbox(&mut self.filtros.incluir_adulto, "Contenido adulto");
-
-                let boton = ui.add_sized(
-                    Vec2::new(170.0, ALTO_FILTRO),
-                    egui::Button::new(RichText::new("Limpiar").color(p.on_secondary_container))
-                        .fill(p.secondary_container)
-                        .rounding(Rounding::same(20.0)),
-                );
-                if boton.clicked() {
-                    self.filtros = Filtros::default();
-                }
-            });
+            if tema::boton_tonal(ui, "Limpiar", p).clicked() {
+                self.filtros = Filtros::default();
+            }
         });
 
         ui.add_space(10.0);
@@ -827,6 +811,17 @@ impl eframe::App for AppZapTome {
                 Pantalla::Lector => self.ui_lector(ui, ctx, &p),
             });
     }
+}
+
+/// Da más altura y tamaño a las opciones de un desplegable.
+fn estilo_desplegable(ui: &mut egui::Ui) {
+    ui.spacing_mut().item_spacing.y = 10.0;
+    ui.style_mut()
+        .text_styles
+        .insert(egui::TextStyle::Body, FontId::proportional(18.0));
+    ui.style_mut()
+        .text_styles
+        .insert(egui::TextStyle::Button, FontId::proportional(18.0));
 }
 
 fn nombre_estado(estado: Option<EstadoObra>) -> &'static str {
