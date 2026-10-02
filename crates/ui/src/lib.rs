@@ -513,21 +513,13 @@ impl AppZapTome {
                 .selected_text(nombre_idioma(&self.filtros.idioma_original))
                 .show_ui(ui, |ui| {
                     ui.selectable_value(&mut self.filtros.idioma_original, None, "Cualquier idioma");
-                    ui.selectable_value(
-                        &mut self.filtros.idioma_original,
-                        Some("ja".to_string()),
-                        "Japonés",
-                    );
-                    ui.selectable_value(
-                        &mut self.filtros.idioma_original,
-                        Some("ko".to_string()),
-                        "Coreano",
-                    );
-                    ui.selectable_value(
-                        &mut self.filtros.idioma_original,
-                        Some("zh".to_string()),
-                        "Chino",
-                    );
+                    for (codigo, nombre) in IDIOMAS {
+                        ui.selectable_value(
+                            &mut self.filtros.idioma_original,
+                            Some((*codigo).to_string()),
+                            *nombre,
+                        );
+                    }
                 });
 
             egui::ComboBox::from_id_salt("filtro_demografia")
@@ -815,13 +807,28 @@ fn nombre_estado(estado: Option<EstadoObra>) -> &'static str {
     }
 }
 
+/// Idiomas originales más habituales en MangaDex.
+const IDIOMAS: &[(&str, &str)] = &[
+    ("ja", "Japonés"),
+    ("ko", "Coreano"),
+    ("zh", "Chino simplificado"),
+    ("zh-hk", "Chino tradicional"),
+    ("en", "Inglés"),
+    ("id", "Indonesio"),
+    ("vi", "Vietnamita"),
+    ("th", "Tailandés"),
+    ("fr", "Francés"),
+    ("es", "Español"),
+];
+
 fn nombre_idioma(idioma: &Option<String>) -> &'static str {
     match idioma.as_deref() {
         None => "Idioma: cualquiera",
-        Some("ja") => "Japonés",
-        Some("ko") => "Coreano",
-        Some("zh") => "Chino",
-        _ => "Idioma",
+        Some(codigo) => IDIOMAS
+            .iter()
+            .find(|(c, _)| *c == codigo)
+            .map(|(_, nombre)| *nombre)
+            .unwrap_or("Idioma"),
     }
 }
 
