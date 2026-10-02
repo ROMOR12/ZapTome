@@ -10,7 +10,9 @@ pub mod descargador;
 pub mod maqueta;
 
 pub use cache::CachePresupuesto;
-pub use decodificador::{decodificar, dimensiones_desde_cabecera, ImagenDecodificada};
+pub use decodificador::{
+    decodificar, decodificar_escalado, dimensiones_desde_cabecera, ImagenDecodificada,
+};
 pub use descargador::descargar;
 pub use maqueta::{Dimensiones, Maqueta, PaginaColocada, Tesela};
 

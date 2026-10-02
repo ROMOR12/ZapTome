@@ -34,6 +34,31 @@ pub fn decodificar(bytes: &[u8]) -> Result<ImagenDecodificada, ErrorLector> {
     })
 }
 
+/// Decodifica la imagen y la reduce para usarla como miniatura.
+pub fn decodificar_escalado(
+    bytes: &[u8],
+    ancho_max: u32,
+) -> Result<ImagenDecodificada, ErrorLector> {
+    let imagen =
+        image::load_from_memory(bytes).map_err(|e| ErrorLector::Decodificacion(e.to_string()))?;
+
+    let imagen = if ancho_max > 0 && imagen.width() > ancho_max {
+        let escala = ancho_max as f64 / imagen.width() as f64;
+        let alto = ((imagen.height() as f64) * escala).round().max(1.0) as u32;
+        imagen.resize_exact(ancho_max, alto, image::imageops::FilterType::Triangle)
+    } else {
+        imagen
+    };
+
+    let rgba = imagen.to_rgba8();
+    let (ancho, alto) = rgba.dimensions();
+    Ok(ImagenDecodificada {
+        ancho,
+        alto,
+        pixeles: rgba.into_raw(),
+    })
+}
+
 /// Lee las dimensiones desde la cabecera, sin decodificar toda la imagen.
 pub fn dimensiones_desde_cabecera(bytes: &[u8]) -> Result<Dimensiones, ErrorLector> {
     let lector = ImageReader::new(Cursor::new(bytes))

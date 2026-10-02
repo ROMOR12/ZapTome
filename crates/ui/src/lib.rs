@@ -6,10 +6,12 @@
 mod lector_view;
 mod tema;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use eframe::egui::{
-    self, Align, Align2, Context, FontId, Frame, Layout, Margin, RichText, Rounding, Vec2,
+    self, Align, Align2, Color32, Context, FontId, Frame, Layout, Margin, Rect, RichText, Rounding,
+    Sense, Vec2,
 };
 use tokio::runtime::Runtime;
 use tokio::sync::{mpsc, Semaphore};
@@ -24,6 +26,14 @@ use lector_view::Lector;
 use tema::Paleta;
 
 const MAX_DESCARGAS_SIMULTANEAS: usize = 4;
+const ANCHO_PORTADA: u32 = 240;
+
+/// Estado de una portada en la caché.
+enum EstadoPortada {
+    Cargando,
+    Lista(egui::TextureHandle),
+    Fallida,
+}
 
 /// Mensajes que llegan desde las tareas en segundo plano.
 enum Mensaje {
@@ -36,6 +46,10 @@ enum Mensaje {
     Paginas(Result<(IdFuente, Obra, Capitulo, Vec<Pagina>), String>),
     Imagen {
         indice: usize,
+        resultado: Result<ImagenDecodificada, String>,
+    },
+    Portada {
+        url: String,
         resultado: Result<ImagenDecodificada, String>,
     },
 }
@@ -70,6 +84,7 @@ pub struct AppZapTome {
     biblioteca: Vec<EntradaBiblioteca>,
     capitulos_obra: Option<(Obra, Vec<Capitulo>)>,
     lector: Option<Lector>,
+    portadas: HashMap<String, EstadoPortada>,
 }
 
 impl AppZapTome {
@@ -101,6 +116,7 @@ impl AppZapTome {
             biblioteca: Vec::new(),
             capitulos_obra: None,
             lector: None,
+            portadas: HashMap::new(),
         }
     }
 
@@ -113,6 +129,43 @@ impl AppZapTome {
         self.runtime.spawn(async move {
             let mensaje = futuro.await;
             let _ = tx.send(mensaje);
+            ctx.request_repaint();
+        });
+    }
+
+    fn textura_portada(&self, url: &str) -> Option<egui::TextureId> {
+        match self.portadas.get(url) {
+            Some(EstadoPortada::Lista(textura)) => Some(textura.id()),
+            _ => None,
+        }
+    }
+
+    fn solicitar_portada(&mut self, ctx: &Context, url: &str) {
+        if self.portadas.contains_key(url) {
+            return;
+        }
+        self.portadas
+            .insert(url.to_string(), EstadoPortada::Cargando);
+
+        let cliente = self.cliente.clone();
+        let tx = self.tx.clone();
+        let ctx = ctx.clone();
+        let semaforo = self.semaforo.clone();
+        let url_tarea = url.to_string();
+
+        self.runtime.spawn(async move {
+            let resultado = match semaforo.acquire().await {
+                Ok(_permiso) => match zaptome_lector::descargar(&cliente, &url_tarea).await {
+                    Ok(bytes) => zaptome_lector::decodificar_escalado(&bytes, ANCHO_PORTADA)
+                        .map_err(|e| e.to_string()),
+                    Err(e) => Err(e.to_string()),
+                },
+                Err(e) => Err(e.to_string()),
+            };
+            let _ = tx.send(Mensaje::Portada {
+                url: url_tarea,
+                resultado,
+            });
             ctx.request_repaint();
         });
     }
@@ -264,6 +317,23 @@ impl AppZapTome {
                         }
                     }
                 },
+                Mensaje::Portada { url, resultado } => match resultado {
+                    Ok(imagen) => {
+                        let color = egui::ColorImage::from_rgba_unmultiplied(
+                            [imagen.ancho as usize, imagen.alto as usize],
+                            &imagen.pixeles,
+                        );
+                        let textura = ctx.load_texture(
+                            format!("portada:{url}"),
+                            color,
+                            egui::TextureOptions::LINEAR,
+                        );
+                        self.portadas.insert(url, EstadoPortada::Lista(textura));
+                    }
+                    Err(_) => {
+                        self.portadas.insert(url, EstadoPortada::Fallida);
+                    }
+                },
             }
         }
     }
@@ -281,10 +351,19 @@ impl AppZapTome {
         }
 
         let mut abrir: Option<Obra> = None;
+        let mut pedir_portadas: Vec<String> = Vec::new();
+
         egui::ScrollArea::vertical().show(ui, |ui| {
             for entrada in &self.biblioteca {
                 tema::tarjeta(ui, p, |ui| {
                     ui.horizontal(|ui| {
+                        if let Some(url) = &entrada.portada {
+                            portada_widget(ui, p, self.textura_portada(url));
+                            if !self.portadas.contains_key(url) {
+                                pedir_portadas.push(url.clone());
+                            }
+                        }
+                        ui.add_space(4.0);
                         ui.label(
                             RichText::new(&entrada.titulo)
                                 .size(16.0)
@@ -302,6 +381,9 @@ impl AppZapTome {
             }
         });
 
+        for url in pedir_portadas {
+            self.solicitar_portada(ctx, &url);
+        }
         if let Some(obra) = abrir {
             self.cargar_capitulos(ctx, obra);
         }
@@ -339,10 +421,19 @@ impl AppZapTome {
         ui.add_space(10.0);
 
         let mut abrir: Option<Obra> = None;
+        let mut pedir_portadas: Vec<String> = Vec::new();
+
         egui::ScrollArea::vertical().show(ui, |ui| {
             for obra in &self.resultados {
                 tema::tarjeta(ui, p, |ui| {
                     ui.horizontal(|ui| {
+                        if let Some(url) = &obra.portada {
+                            portada_widget(ui, p, self.textura_portada(url));
+                            if !self.portadas.contains_key(url) {
+                                pedir_portadas.push(url.clone());
+                            }
+                        }
+                        ui.add_space(4.0);
                         ui.vertical(|ui| {
                             ui.label(
                                 RichText::new(&obra.titulo)
@@ -351,7 +442,7 @@ impl AppZapTome {
                                     .color(p.on_surface),
                             );
                             if let Some(sinopsis) = &obra.sinopsis {
-                                let recorte: String = sinopsis.chars().take(180).collect();
+                                let recorte: String = sinopsis.chars().take(160).collect();
                                 ui.label(
                                     RichText::new(recorte).size(13.0).color(p.on_surface_variant),
                                 );
@@ -368,6 +459,9 @@ impl AppZapTome {
             }
         });
 
+        for url in pedir_portadas {
+            self.solicitar_portada(ctx, &url);
+        }
         if let Some(obra) = abrir {
             self.cargar_capitulos(ctx, obra);
         }
@@ -431,12 +525,8 @@ impl AppZapTome {
                         .strong()
                         .color(p.on_surface),
                 );
-                ui.label(
-                    RichText::new(&lector.capitulo.titulo).color(p.on_surface_variant),
-                );
-                ui.label(
-                    RichText::new(format!("· {}", lector.fuente.0)).color(p.outline),
-                );
+                ui.label(RichText::new(&lector.capitulo.titulo).color(p.on_surface_variant));
+                ui.label(RichText::new(format!("· {}", lector.fuente.0)).color(p.outline));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     ui.label(
                         RichText::new(format!("{} páginas", lector.paginas.len()))
@@ -487,12 +577,7 @@ impl eframe::App for AppZapTome {
             )
             .show(ctx, |ui| {
                 ui.horizontal_centered(|ui| {
-                    ui.label(
-                        RichText::new("ZapTome")
-                            .size(24.0)
-                            .strong()
-                            .color(p.primary),
-                    );
+                    ui.label(RichText::new("ZapTome").size(24.0).strong().color(p.primary));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let icono = if self.oscuro { "☀" } else { "🌙" };
                         if tema::boton_texto(ui, icono, &p).clicked() {
@@ -549,9 +634,28 @@ impl eframe::App for AppZapTome {
     }
 }
 
+/// Dibuja una portada con relación 2:3, o un marcador si aún no está.
+fn portada_widget(ui: &mut egui::Ui, p: &Paleta, textura: Option<egui::TextureId>) {
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(64.0, 92.0), Sense::hover());
+    match textura {
+        Some(id) => {
+            ui.painter().image(
+                id,
+                rect,
+                Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                Color32::WHITE,
+            );
+        }
+        None => {
+            ui.painter()
+                .rect_filled(rect, Rounding::same(8.0), p.surface_container_high);
+        }
+    }
+}
+
 /// Botón del riel de navegación.
 fn boton_nav(ui: &mut egui::Ui, p: &Paleta, activo: bool, icono: &str, texto: &str) -> bool {
-    let (rect, respuesta) = ui.allocate_exact_size(Vec2::new(72.0, 60.0), egui::Sense::click());
+    let (rect, respuesta) = ui.allocate_exact_size(Vec2::new(72.0, 60.0), Sense::click());
 
     let color = if activo {
         p.on_secondary_container
